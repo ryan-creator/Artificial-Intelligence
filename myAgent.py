@@ -16,7 +16,7 @@ class MyCreature:
     def __init__(self):
         self.fitness = 0
         self.chromosome = np.zeros(nChromosome)
-        for i in range(7):
+        for i in range(nChromosome):
             self.chromosome[i] = random.randint(0, 100)
 
     # Receives a tensor or percepts and maps the percepts plus chromosomes to actions.
