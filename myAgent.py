@@ -4,11 +4,11 @@ import random
 import defaults
 
 playerName = "myAgent"
-nPercepts = 75      # This is the number of percepts
-nActions = 7        # This is the number of actions
-nChromosome = 8     # Length of a chromosome
-game_count = 0      # Keep track of the game count
-fitness_list = []   # Store the overall_fitness for each game to plot on a char
+nPercepts = 75  # This is the number of percepts
+nActions = 7  # This is the number of actions
+nChromosome = 8  # Length of a chromosome
+game_count = 0  # Keep track of the game count
+fitness_list = []  # Store the overall_fitness for each game to plot on a char
 
 
 class MyCreature:
@@ -22,22 +22,22 @@ class MyCreature:
     # Receives a tensor or percepts and maps the percepts plus chromosomes to actions.
     def AgentFunction(self, percepts):
 
-        creature_map = percepts[:, :, 0]    # 5x5 map with information about creatures and their size
-        food_map = percepts[:, :, 1]        # 5x5 map with information about strawberries
-        wall_map = percepts[:, :, 2]        # 5x5 map with information about walls
+        creature_map = percepts[:, :, 0]  # 5x5 map with information about creatures and their size
+        food_map = percepts[:, :, 1]  # 5x5 map with information about strawberries
+        wall_map = percepts[:, :, 2]  # 5x5 map with information about walls
 
-        my_size = np.abs(creature_map[2, 2])    # My creatures size, used for comparison to other creatures
+        my_size = np.abs(creature_map[2, 2])  # My creatures size, used for comparison to other creatures
         actions = np.zeros(nActions)
 
         # This wee if statement sets variables to particular values depending on the stage of the game,
         # This is done so the creatures can have different goals at different stages i.e. eat at the b
         # beginning to get bigger and then attack later in the game when bigger to win.
+        game_stage_early = 0
+        game_stage_late = 0
         if game_count > 50:
             game_stage_early = 50
-            game_stage_late = 0
         else:
             game_stage_late = 50
-            game_stage_early = 0
 
         # I choose to give the creatures personalities variables so their behaviour further differs, their
         # personality (aggressive or cautious) is determined by there 8th chromosome, an odd chromosome
@@ -61,7 +61,7 @@ class MyCreature:
                 if creature_map[j, i] == 0:
                     continue
                 if np.abs(creature_map[j, i]) > 0 and creature_map[j, i] != creature_map[2, 2]:
-                    if np.abs(creature_map[j, i]) <= my_size:
+                    if np.abs(creature_map[j, i]) < my_size:
                         # Chase & fight
                         if i + j >= 4:
                             actions[2] += self.chromosome[2] + personality_aggressive + game_stage_late
@@ -111,6 +111,7 @@ class MyCreature:
 
         return actions
 
+
 # Creates a new generation by picking two fittest parents through a tournament and creating a new population with
 # their chromosomes.
 def newGeneration(old_population):
@@ -122,10 +123,7 @@ def newGeneration(old_population):
     # and enemy eaten, if the creature remained alive their fitness score is multiplied by 0.5 to guarantee that
     # the parents were still alive at the end of the game, i.e. I considered being alive the most important attribute.
     for n, creature in enumerate(old_population):
-        creature.fitness = ((creature.turn / 2) + creature.size + (
-                    creature.strawb_eats + creature.enemy_eats * 2)) / 100
-        if creature.alive:
-            creature.fitness = creature.fitness * 0.5
+        creature.fitness = ((creature.turn / 10) + ((creature.size + creature.strawb_eats + creature.enemy_eats) * 2) * (int(creature.alive) * 2)) / 100
         overall_fitness[n] = creature.fitness
 
     new_population = list()
@@ -133,19 +131,31 @@ def newGeneration(old_population):
     # The below code selects the two fittest creatures to become the parent one and two, and the third and forth
     # creatures to add straight to the new population (elitism). I did this to allow more diversity in the new
     # population.
-    parent_one = creature
-    parent_two = creature
-    elitism_one = parent_two
-    elitism_two = elitism_one
+    first, second, third, forth, parent_one, parent_two = creature, creature, creature, creature, creature, creature
     for n, creature in enumerate(old_population):
-        if creature.fitness > parent_one.fitness:
-            elitism_two = elitism_one
-            elitism_one = parent_two
-            parent_two = parent_one
-            parent_one = creature
+        if creature.fitness > first.fitness:
+            forth = third
+            third = second
+            second = first
+            first = creature
 
-    new_population.append(elitism_one)
-    new_population.append(elitism_two)
+    order = random.randint(1, 4)
+    if order == 1:
+        parent_one, parent_two = first, second
+        new_population.append(third)
+        new_population.append(forth)
+    elif order == 2:
+        parent_one, parent_two = forth, first
+        new_population.append(second)
+        new_population.append(third)
+    elif order == 3:
+        parent_one, parent_two = third, forth
+        new_population.append(first)
+        new_population.append(second)
+    else:
+        parent_one, parent_two = second, third
+        new_population.append(forth)
+        new_population.append(first)
 
     # For the crossover I used the uniform cross-over method. I noticed with the uniform cross-over (and the other
     # cross over methods I experimented with), that after a few generations there was very little diversity in the
@@ -183,7 +193,11 @@ def newGeneration(old_population):
     # To calculate and display the average fitness chart.
     game_count += 1
     if game_count == defaults.game_params['nGames']:
-        plt.plot(fitness_list)
+        for i in range(5):
+            sum5 = fitness_list[i]
+            if i == 4:
+                five_game_avg = sum5 / 5
+                plt.plot(five_game_avg)
         plt.xlabel("Generation")
         plt.ylabel("Average Fitness")
         plt.title("Change in average Fitness")
