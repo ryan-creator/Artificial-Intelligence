@@ -9,10 +9,10 @@ game_params = {
    "player2": "randomPlayer",
 
    # Game for which to show visualisations
-   "show_games": [1, 500],
+   "show_games": [0, 500],
 
    # Games for which to save visualisations (for later re-viewing)
-   "save_games": [1, 500],
+   "save_games": [],
 
    # Speed of visualisation ('slow','normal','fast')
    "visSpeed": 'normal',

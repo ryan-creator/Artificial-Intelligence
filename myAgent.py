@@ -1,3 +1,5 @@
+from statistics import mean
+
 import matplotlib.pyplot as plt
 import numpy as np
 import random
@@ -7,6 +9,7 @@ playerName = "myAgent"
 nPercepts = 75  # This is the number of percepts
 nActions = 7  # This is the number of actions
 nChromosome = 8  # Length of a chromosome
+tournament_winners = 5
 game_count = 0  # Keep track of the game count
 fitness_list = []  # Store the overall_fitness for each game to plot on a char
 
@@ -112,50 +115,40 @@ class MyCreature:
         return actions
 
 
-# Creates a new generation by picking two fittest parents through a tournament and creating a new population with
-# their chromosomes.
+# Implements the fitness function, parent selection, elitism, the uniform cross-over method and mutations.
 def newGeneration(old_population):
     global game_count
-    N = len(old_population)
+    game_count += 1
+    length_old_population = len(old_population)
     overall_fitness = np.zeros(N)
 
-    # My fitness function, a creature fitness equals a summary of the creatures turn, size, strawberries eaten
-    # and enemy eaten, if the creature remained alive their fitness score is multiplied by 0.5 to guarantee that
-    # the parents were still alive at the end of the game, i.e. I considered being alive the most important attribute.
+    # My fitness function, a creature fitness equals the sum of the creatures turn, size, strawberries eaten
+    # and enemy eaten (with different emphasis on the different attributes). For example I considered the creature
+    # living through the game the most important so if a creature lived through a game then their fitness score was
+    # doubled.
     for n, creature in enumerate(old_population):
-        creature.fitness = ((creature.turn / 10) + ((creature.size + creature.strawb_eats + creature.enemy_eats) * 2) * (int(creature.alive) * 2)) / 100
+        creature.fitness = ((creature.turn / 10) + (
+                    (creature.size + creature.strawb_eats + creature.enemy_eats) * 2) * (int(creature.alive) * 2)) / 100
         overall_fitness[n] = creature.fitness
+
+    # Sort the old_population in order of fitness
+    old_population.sort(key=lambda x: x.fitness, reverse=True)
 
     new_population = list()
 
-    # The below code selects the two fittest creatures to become the parent one and two, and the third and forth
-    # creatures to add straight to the new population (elitism). I did this to allow more diversity in the new
-    # population.
-    first, second, third, forth, parent_one, parent_two = creature, creature, creature, creature, creature, creature
-    for n, creature in enumerate(old_population):
-        if creature.fitness > first.fitness:
-            forth = third
-            third = second
-            second = first
-            first = creature
+    # The below code selects n number of the fittest creatures (n = tournament_winners) and picks two random creatures
+    # from the tournament winners, the two picked creatures are used as parent_one and parent_two while the remaining
+    # tournament winners were added to the new population (elitism).
+    sample = random.sample(range(tournament_winners), k=2)
+    pick_one = sample[0]
+    pick_two = sample[1]
 
-    order = random.randint(1, 4)
-    if order == 1:
-        parent_one, parent_two = first, second
-        new_population.append(third)
-        new_population.append(forth)
-    elif order == 2:
-        parent_one, parent_two = forth, first
-        new_population.append(second)
-        new_population.append(third)
-    elif order == 3:
-        parent_one, parent_two = third, forth
-        new_population.append(first)
-        new_population.append(second)
-    else:
-        parent_one, parent_two = second, third
-        new_population.append(forth)
-        new_population.append(first)
+    parent_one = old_population[pick_one]
+    parent_two = old_population[pick_two]
+
+    for i in range(tournament_winners):
+        if i != pick_one or i != parent_two:
+            new_population.append(old_population[i])
 
     # For the crossover I used the uniform cross-over method. I noticed with the uniform cross-over (and the other
     # cross over methods I experimented with), that after a few generations there was very little diversity in the
@@ -163,44 +156,40 @@ def newGeneration(old_population):
     # depending on the game, so every other game the parents are switched instead of the chromosome[0] coming
     # from parent_one, it will then come from parent_two. I found this still kept the attributes of the fittest
     # creatures but allowed more diversity in the population.
-    for n in range(N - 2):
+    for n in range(length_old_population - tournament_winners):
         new_creature = MyCreature()
         for i in range(nChromosome):
-            if game_count % 2 == 0:
-                if i % 2 == 0:
-                    new_creature.chromosome[i] = parent_one.chromosome[i]
-                else:
-                    new_creature.chromosome[i] = parent_two.chromosome[i]
-                # Five percent chance of a mutation
-                if random.randint(0, 99) < 5:
-                    new_creature.chromosome[random.randint(0, 6)] = random.randint(0, 99)
+            if i % 2 == 0:
+                new_creature.chromosome[i] = parent_one.chromosome[i]
             else:
-                if i % 2 == 1:
-                    new_creature.chromosome[i] = parent_two.chromosome[i]
-                else:
-                    new_creature.chromosome[i] = parent_one.chromosome[i]
-                # Five percent chance of a mutation
-                if random.randint(0, 99) < 5:
-                    new_creature.chromosome[random.randint(0, 6)] = random.randint(0, 99)
+                new_creature.chromosome[i] = parent_two.chromosome[i]
+            # Five percent chance of a mutation
+            if random.randint(0, 99) <= 5:
+                new_creature.chromosome[random.randint(0, nChromosome - 1)] = random.randint(0, 99)
 
         # Add the new agent to the new population
         new_population.append(new_creature)
 
     # At the end you need to compute average fitness and return it along with your new population
     avg_fitness = np.mean(overall_fitness)
-    fitness_list.append(avg_fitness)
+
+    # Code between here and the return statement can go when i submit my code
+    five_game_sum = 0
+    five_game_sum += avg_fitness
+    if game_count % 5 == 0:
+        five_game_sum = 0
+    fitness_list.append(round(five_game_sum, 2))
 
     # To calculate and display the average fitness chart.
-    game_count += 1
     if game_count == defaults.game_params['nGames']:
-        for i in range(5):
-            sum5 = fitness_list[i]
-            if i == 4:
-                five_game_avg = sum5 / 5
-                plt.plot(five_game_avg)
+        plt.plot(fitness_list)
         plt.xlabel("Generation")
         plt.ylabel("Average Fitness")
         plt.title("Change in average Fitness")
-        plt.savefig("fitness_chart.png")
+        plt.savefig("fitness_chart1.png")
+        file = open("avg_fitness.txt", "a")
+        file.write(str(mean(fitness_list)))
+        file.write("\n")
+        file.close()
 
     return new_population, avg_fitness
