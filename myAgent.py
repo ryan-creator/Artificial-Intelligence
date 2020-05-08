@@ -99,15 +99,21 @@ class MyCreature:
                         actions[2] += self.chromosome[2] + personality_cautious + game_stage_early
                         actions[3] += self.chromosome[3] + personality_cautious + game_stage_early
 
-        # This code is designed to prevent wasted moves (not trying to move onto a wall or a friendly creature).
-        if np.abs(wall_map[2, 1]) == 1 or np.abs(creature_map[2, 1]) < 0: actions[0] -= self.chromosome[0] / 2
-        if np.abs(wall_map[1, 2]) == 1 or np.abs(creature_map[1, 2]) < 0: actions[1] -= self.chromosome[1] / 2
-        if np.abs(wall_map[2, 3]) == 1 or np.abs(creature_map[2, 3]) < 0: actions[2] -= self.chromosome[2] / 2
-        if np.abs(wall_map[3, 2]) == 1 or np.abs(creature_map[3, 2]) < 0: actions[3] -= self.chromosome[3] / 2
+        # This code is designed to prevent wasted moves (not trying to move onto a wall or a friendly creature) For
+        # example if there is a wall above the creature (wall_map[2, 1]) then append the corresponding chromosome
+        # the action score for moving down (away from the wall or friendly creature).
+        if np.abs(wall_map[2, 1]) == 1 or np.abs(creature_map[2, 1]) < 0:
+            actions[2] += self.chromosome[2]
+        if np.abs(wall_map[1, 2]) == 1 or np.abs(creature_map[1, 2]) < 0:
+            actions[3] -= self.chromosome[3]
+        if np.abs(wall_map[2, 3]) == 1 or np.abs(creature_map[2, 3]) < 0:
+            actions[0] -= self.chromosome[0]
+        if np.abs(wall_map[3, 2]) == 1 or np.abs(creature_map[3, 2]) < 0:
+            actions[1] -= self.chromosome[1]
 
         # From watching replays I noticed that the creatures doing nothing looked extremely unhelpful so I wanted
         # to decrease the chance of this action being the action that's run, hence i divide the action score by 3.
-        actions[4] = self.chromosome[4] / 3
+        actions[4] = self.chromosome[4]
 
         # Move in random direction
         actions[6] = self.chromosome[6]
@@ -120,7 +126,7 @@ def newGeneration(old_population):
     global game_count
     game_count += 1
     length_old_population = len(old_population)
-    overall_fitness = np.zeros(N)
+    overall_fitness = np.zeros(length_old_population)
 
     # My fitness function, a creature fitness equals the sum of the creatures turn, size, strawberries eaten
     # and enemy eaten (with different emphasis on the different attributes). For example I considered the creature
@@ -128,7 +134,7 @@ def newGeneration(old_population):
     # doubled.
     for n, creature in enumerate(old_population):
         creature.fitness = ((creature.turn / 10) + (
-                    (creature.size + creature.strawb_eats + creature.enemy_eats) * 2) * (int(creature.alive) * 2)) / 100
+                (creature.size + creature.strawb_eats + creature.enemy_eats) * 2) * (int(creature.alive) * 2)) / 100
         overall_fitness[n] = creature.fitness
 
     # Sort the old_population in order of fitness
@@ -150,12 +156,7 @@ def newGeneration(old_population):
         if i != pick_one or i != parent_two:
             new_population.append(old_population[i])
 
-    # For the crossover I used the uniform cross-over method. I noticed with the uniform cross-over (and the other
-    # cross over methods I experimented with), that after a few generations there was very little diversity in the
-    # populations chromosomes. So added a 5% chance of a random mutation, and the uniform cross-over will change
-    # depending on the game, so every other game the parents are switched instead of the chromosome[0] coming
-    # from parent_one, it will then come from parent_two. I found this still kept the attributes of the fittest
-    # creatures but allowed more diversity in the population.
+    # For the crossover I used the uniform cross-over method. I added a 5% chance of a random mutation.
     for n in range(length_old_population - tournament_winners):
         new_creature = MyCreature()
         for i in range(nChromosome):
@@ -182,7 +183,7 @@ def newGeneration(old_population):
 
     # To calculate and display the average fitness chart.
     if game_count == defaults.game_params['nGames']:
-        plt.plot(fitness_list)
+        plt.plot(fitness_list, game_count)
         plt.xlabel("Generation")
         plt.ylabel("Average Fitness")
         plt.title("Change in average Fitness")
