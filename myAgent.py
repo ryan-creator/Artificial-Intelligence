@@ -11,7 +11,9 @@ nActions = 7  # This is the number of actions
 nChromosome = 8  # Length of a chromosome
 tournament_winners = 5
 game_count = 0  # Keep track of the game count
-fitness_list = []  # Store the overall_fitness for each game to plot on a char
+generation_fitness = np.zeros(defaults.game_params['nGames'])
+generation = np.zeros(defaults.game_params['nGames'])
+create_chart = True
 
 
 class MyCreature:
@@ -103,13 +105,13 @@ class MyCreature:
         # example if there is a wall above the creature (wall_map[2, 1]) then append the corresponding chromosome
         # the action score for moving down (away from the wall or friendly creature).
         if np.abs(wall_map[2, 1]) == 1 or np.abs(creature_map[2, 1]) < 0:
-            actions[2] += self.chromosome[2]
+            actions[2] += self.chromosome[0]
         if np.abs(wall_map[1, 2]) == 1 or np.abs(creature_map[1, 2]) < 0:
-            actions[3] -= self.chromosome[3]
+            actions[3] += self.chromosome[1]
         if np.abs(wall_map[2, 3]) == 1 or np.abs(creature_map[2, 3]) < 0:
-            actions[0] -= self.chromosome[0]
+            actions[0] += self.chromosome[2]
         if np.abs(wall_map[3, 2]) == 1 or np.abs(creature_map[3, 2]) < 0:
-            actions[1] -= self.chromosome[1]
+            actions[1] += self.chromosome[3]
 
         # From watching replays I noticed that the creatures doing nothing looked extremely unhelpful so I wanted
         # to decrease the chance of this action being the action that's run, hence i divide the action score by 3.
@@ -175,21 +177,19 @@ def newGeneration(old_population):
     avg_fitness = np.mean(overall_fitness)
 
     # Code between here and the return statement can go when i submit my code
-    five_game_sum = 0
-    five_game_sum += avg_fitness
-    if game_count % 5 == 0:
-        five_game_sum = 0
-    fitness_list.append(round(five_game_sum, 2))
+
+    generation_fitness[game_count - 1] = avg_fitness
+    generation[game_count - 1] = game_count
 
     # To calculate and display the average fitness chart.
-    if game_count == defaults.game_params['nGames']:
-        plt.plot(fitness_list, game_count)
+    if game_count == defaults.game_params['nGames'] & create_chart:
+        plt.plot(generation_fitness)
         plt.xlabel("Generation")
         plt.ylabel("Average Fitness")
         plt.title("Change in average Fitness")
-        plt.savefig("fitness_chart1.png")
+        plt.savefig("fitness_chart.png")
         file = open("avg_fitness.txt", "a")
-        file.write(str(mean(fitness_list)))
+        file.write(str(mean(generation_fitness)))
         file.write("\n")
         file.close()
 
