@@ -1,6 +1,5 @@
 import numpy as np
 
-
 playerName = "randomPlayer"
 nPercepts = 75
 nActions = 7
@@ -25,7 +24,7 @@ def newGeneration(old_population):
     # This agent doesn't evolve - it just returns the old generation (your agent should
     # measure fitness based on stats provided, do parent selection based on fitness
     # and "breed" new agents with chromosomes that are combination of the parents
-    global game_count
+
     N = len(old_population)
     fitness = np.zeros((N))
 
@@ -38,4 +37,4 @@ def newGeneration(old_population):
     avg_fitness = np.mean(fitness)
 
     # This function returns old_population - your agent should create new population
-    return old_population, avg_fitness
+    return (old_population, avg_fitness)

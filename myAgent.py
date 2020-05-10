@@ -182,7 +182,7 @@ def newGeneration(old_population):
     generation[game_count - 1] = game_count
 
     # To calculate and display the average fitness chart.
-    if game_count == defaults.game_params['nGames'] & create_chart:
+    if game_count == defaults.game_params['nGames'] and create_chart:
         plt.plot(generation_fitness)
         plt.xlabel("Generation")
         plt.ylabel("Average Fitness")

@@ -2,13 +2,17 @@ import importlib
 import numpy as np
 import traceback
 import sys
-import vis_pygame as vis
 import gzip, pickle
 from datetime import datetime
 import os
 import getopt
-import matplotlib
+import signal
 
+in_tournament = False
+game_play = True
+
+def alarm_handler(signum, frame):
+    raise RuntimeError("Time out")
 
 # Class avatar is a wrapper for the agent with extra bits required
 # for runnin the game
@@ -42,53 +46,127 @@ class Avatar:
 
     # Execute AgentFunction that maps percepts to actions
     def action(self, percepts):
+
+        if in_tournament:
+            signal.signal(signal.SIGALRM, alarm_handler)
+            signal.alarm(1)
+
         try:
-            return self.agent.AgentFunction(percepts)
+            actions = self.agent.AgentFunction(percepts)
+            if type(actions) == np.ndarray:
+                actions = actions.tolist()
+
         except Exception as e:
-            print("Error! Failed to execute AgentFunction from '%s.py'" % self.playerFile)
-            traceback.print_exc()
-            sys.exit(-1)
+            if in_tournament:
+                raise RuntimeError("Error! Failed to execute AgentFunction")
+            else:
+                print("Error! Failed to execute AgentFunction from '%s.py'" % self.playerFile)
+                traceback.print_exc()
+                sys.exit(-1)
+
+        if in_tournament:
+            signal.alarm(0)
+
+        if type(actions) != list:
+            if in_tournament:
+                raise RuntimeError("Error! AgentFunction must return a list or numpy.ndarray type")
+            else:
+                print("Error! AgentFunction in '%s.py' must return a list or numpy.ndarray type" % self.playerFile)
+                traceback.print_exc()
+                sys.exit(-1)
+
+        if len(actions) != 7:
+            if in_tournament:
+                raise RuntimeError("Error! The returned action list from AgentFunction must contain 7 items")
+            else:
+                print("Error! The returned action list from AgentFunction in '%s.py'must contain 7 items" % self.playerFile)
+                traceback.print_exc()
+                sys.exit(-1)
+
+        return actions
 
 # Class player holds all the agents for a given player
 class Player:
 
-    def __init__(self, player, playerFile, nAgents):
+    def __init__(self, player, playerFile, nAgents,emptyMode=False):
 
         self.player = player
         self.nAgents = nAgents
         self.playerFile = playerFile
+        self.fitness = list()
+        self.errorMsg = ""
+        self.ready = False
+
+        if emptyMode:
+            return
 
         # Import agent file as module
+        if in_tournament:
+            signal.signal(signal.SIGALRM, alarm_handler)
+            signal.alarm(10)
         try:
             self.exec = importlib.import_module(playerFile)
         except Exception as e:
-            print("Error! Failed to load '%s.py'" % self.playerFile)
-            traceback.print_exc()
-            sys.exit(-1)
+            if in_tournament:
+                signal.alarm(0)
+                self.errorMsg = str(e)
+                return
+            else:
+                print("Error! Failed to load '%s.py'" % self.playerFile)
+                traceback.print_exc()
+                sys.exit(-1)
 
-        if hasattr(self.exec, 'playerName'):
-            self.name = self.exec.playerName
+        if in_tournament:
+            signal.alarm(0)
+
+        if in_tournament:
+            self.name = playerFile.split('.')[1]
         else:
-            self.name = playerFile
+            if hasattr(self.exec, 'playerName'):
+                self.name = self.exec.playerName
+            else:
+                self.name = playerFile
 
         # Create the initial population of agents by creating
         # new instance of the agent using provided MyCreature class
         agents = list()
         for n in range(self.nAgents):
+            if in_tournament:
+                signal.signal(signal.SIGALRM, alarm_handler)
+                signal.alarm(1)
             try:
                 agent = self.exec.MyCreature()
             except Exception as e:
-                print("Error! Failed to execute MyCreature() from '%s.py'" % self.playerFile)
-                traceback.print_exc()
-                sys.exit(-1)
+                if in_tournament:
+                    signal.alarm(0)
+                    self.errorMsg = str(e)
+                    return
+                else:
+                    print("Error! Failed to instantiate MyCreature() from '%s.py'" % self.playerFile)
+                    traceback.print_exc()
+                    sys.exit(-1)
+
+            if in_tournament:
+                signal.alarm(0)
             agents.append(agent)
 
         # Convert list of agents to list of avatars
-        self.agents_to_avatars(agents)
+        try:
+            self.agents_to_avatars(agents)
+        except Exception as e:
+            if in_tournament:
+                signal.alarm(0)
+                self.errorMsg = str(e)
+                return
+            else:
+                print("Error! Failed to create a list of MyCratuers")
+                traceback.print_exc()
+                sys.exit(-1)
+
+        self.ready = True
+
 
     def reset_for_new_game(self):
-        self.fitness = list()
-
         for avatar in self.avatars:
             avatar.reset_for_new_game()
 
@@ -98,6 +176,16 @@ class Player:
         self.stats = list()
 
         for agent in agents:
+            if type(agent) != self.exec.MyCreature:
+                if in_tournament:
+                    raise RuntimeError(
+                        'Error! The new_population returned form newGeneration() must contain objects of MyCreature() type')
+                else:
+                    print("Error! The new_population returned form newGeneration() in '%s.py' must contain objects of MyCreature() type" %
+                    self.playerFile)
+                    traceback.print_exc()
+                    sys.exit(-1)
+
             avatar = Avatar(agent,player=self)
             self.avatars.append(avatar)
             self.stats.append(dict())
@@ -117,21 +205,67 @@ class Player:
             agent.enemy_eats = avatar.enemy_eats
             old_population.append(agent)
 
-        sys.stdout.write("  %s avg_fitness: " % self.playerFile)
+        sys.stdout.write("  %s avg_fitness: " % self.name)
         sys.stdout.flush()
 
         # Get a new population of agents by calling
         # the provided newGeneration method
-        try:
-            (new_population, fitness) = self.exec.newGeneration(old_population)
-            sys.stdout.write(" %.2e\n" % fitness)
-            sys.stdout.flush()
-            self.fitness.append(fitness)
+        if in_tournament:
+            signal.signal(signal.SIGALRM, alarm_handler)
+            signal.alarm(2)
 
+        try:
+            result = self.exec.newGeneration(old_population)
         except Exception as e:
-            print("Error! Failed to execute newGeneration() from '%s.py'" % self.playerFile)
-            traceback.print_exc()
-            sys.exit(-1)
+            if in_tournament:
+                raise RuntimeError('Error! Failed to execute newGeneration()')
+            else:
+                print("Error! Failed to execute newGeneration() from '%s.py'" % self.playerFile)
+                traceback.print_exc()
+                sys.exit(-1)
+
+        if in_tournament:
+            signal.alarm(0)
+
+        if type(result) != tuple or len(result) != 2:
+            if in_tournament:
+                raise RuntimeError('Error! The returned value form newGeneration() must be a 2-item tuple')
+            else:
+                print("Error! The returned value form newGeneration() in '%s.py' must be a 2-item tuple" % self.playerFile)
+                traceback.print_exc()
+                sys.exit(-1)
+
+        (new_population, fitness) = result
+
+        if type(new_population) != list:
+            if in_tournament:
+                raise RuntimeError('Error! The new_population returned form newGeneration() must be a list')
+            else:
+                print("Error! The new_population returned form newGeneration() in '%s.py' must be a list" % self.playerFile)
+                traceback.print_exc()
+                sys.exit(-1)
+
+        try:
+            fitness = float(fitness)
+        except Exception as e:
+            if in_tournament:
+                raise RuntimeError('Error! The fitness returned form newGeneration() must be float or int')
+            else:
+                print("Error! The new_population returned form newGeneration() in '%s.py' must be a float or int" % self.playerFile)
+                traceback.print_exc()
+                sys.exit(-1)
+
+        if len(new_population) != self.nAgents:
+            if in_tournament:
+                raise RuntimeError('Error! The new_population returned form newGeneration() must contain %d items' % self.nAgents)
+            else:
+                print("Error! The new_population returned form newGeneration() in '%s.py' must contain %d items" % (self.playerFile, self.nAgents))
+                traceback.print_exc()
+                sys.exit(-1)
+
+        sys.stdout.write(" %.2e\n" % fitness)
+        sys.stdout.flush()
+        self.fitness.append(fitness)
 
         # Convert agents to avatars
         self.agents_to_avatars(new_population)
@@ -140,7 +274,9 @@ class Player:
 class Game:
 
     # Initialises the game
-    def __init__(self, gridSize, nTurns, nAgents, nWalls, nGames):
+    def __init__(self, gridSize, nTurns, nAgents, nWalls, nGames,tournament=False):
+        global in_tournament
+
         self.rnd = np.random.RandomState()
         self.gridSize = gridSize
         self.nTurns = nTurns
@@ -150,7 +286,7 @@ class Game:
         self.nActions = 7
         self.nFood = self.nAgents
         self.nWalls = nWalls
-
+        in_tournament = tournament
 
 
     def init_wall_map(self):
@@ -304,26 +440,57 @@ class Game:
                 creature_state[i, 4] = avatar.size
 
     # Run the game
-    def run(self,player1File, player2File,show_games, save_games, visResolution=(720,480), visSpeed='normal'):
+    def run(self,player1File, player2File,show_games, save_games, visResolution=(720,480), visSpeed='normal',savePath="saved"):
+
+        global in_tournament, game_play
 
         self.players = list()
+
+        self.game_messages = ['', '']
+        self.game_scores = [0, 0]
+        self.game_saves = list()
 
         # Load player 1
         try:
             self.players.append(Player(0,player1File, self.nAgents))
         except Exception as e:
-            print('Error! ' + str(e))
-            sys.exit(-1)
+            if in_tournament:
+                self.players.append(Player(0,player1File,self.nAgents,emptyMode=True))
+                self.game_messages[0] = "Error! Failed to create a player with the provided MyAgent.py code"
+            else:
+                print('Error! ' + str(e))
+                sys.exit(-1)
+
+        if not self.players[0].ready:
+            self.game_scores[0] = -self.nAgents
+            if self.players[0].errorMsg != "":
+                self.game_messages[0] = self.players[0].errorMsg
+            game_play = False
 
         # Load player 2
         try:
             self.players.append(Player(1,player2File, self.nAgents))
         except Exception as e:
-            print('Error! ' + str(e))
-            sys.exit(-1)
+            if in_tournament:
+                self.players.append(Player(1,player2File,self.nAgents,emptyMode=True))
+                self.game_messages[1] = "Error! Failed to create a player with the provided MyAgent.py code"
+            else:
+                print('Error! ' + str(e))
+                sys.exit(-1)
+
+        if not self.players[1].ready:
+            self.game_scores[1] = -self.nAgents
+            if self.players[1].errorMsg != "":
+                self.game_messages[1] = self.players[0].errorMsg
+            game_play = False
+
+
+        if not game_play:
+            return
 
         # Create the visualiser
         if len(show_games)>0:
+            import vis_pygame as vis
             self.vis = vis.visualiser(speed=visSpeed,gridSize=self.gridSize, playerStrings=(self.players[0].name,self.players[1].name),
                                   resolution=visResolution)
 
@@ -421,8 +588,16 @@ class Game:
                         try:
                             action = np.argmax(avatar.action(percepts))
                         except Exception as e:
-                            traceback.print_exc()
-                            sys.exit(-1)
+                            if in_tournament:
+                                self.game_scores[p] = -self.nAgents
+                                self.game_messages[p] = str(e)
+                                game_play = False
+                            else:
+                                traceback.print_exc()
+                                sys.exit(-1)
+
+                        if not game_play:
+                            break
 
                         # Action 6 is a random movement
                         if action==6:
@@ -466,6 +641,9 @@ class Game:
                         new_agent_map[x,y].append(avatar)
                         avatar.next_position[0]= x
                         avatar.next_position[1]= y
+
+                if not game_play:
+                    return
 
                 # Check for agents bouncing (going into field occupied by other agents)
                 for x in range(self.gridSize):
@@ -533,8 +711,8 @@ class Game:
                 self.update_agent_map()
 
                 # Check for winner
-                gameOver = True
                 for p in range(2):
+                    gameOver = True
                     for avatar in self.players[p].avatars:
                         if avatar.alive:
                            gameOver = False
@@ -572,13 +750,25 @@ class Game:
                 sys.stdout.write('drawn %d-%d\n' % (survivorCount[0],survivorCount[1]))
             sys.stdout.flush()
 
-            for player in self.players:
-                player.new_generation_agents()
+            for p, player in enumerate(self.players):
+                try:
+                    player.new_generation_agents()
+                except Exception as e:
+                    if in_tournament:
+                        self.game_scores[p] = -self.nAgents
+                        self.game_messages[p] = str(e)
+                        game_play = False
+                    else:
+                        traceback.print_exc()
+                        sys.exit(-1)
+
+            if not game_play:
+                return
 
             if game in save_games:
                 #Save a game
-                if not os.path.isdir("saved"):
-                    os.mkdir('saved')
+                if not os.path.isdir(savePath):
+                    os.makedirs(savePath,exist_ok=True)
 
                 now = datetime.now()
                 # Month abbreviation, day and year
@@ -586,14 +776,24 @@ class Game:
                 saveStr += "-%s-vs-%s" % (self.players[0].name,self.players[1].name)
                 saveStr += "-game%03d.pickle.gz" % game
 
-                saveFile = os.path.join("saved", saveStr)
+                saveFile = os.path.join(savePath, saveStr)
+
+                self.game_saves.append(saveFile)
 
                 with gzip.open(saveFile, 'w') as f:
                     pickle.dump((self.players[0].name,self.players[1].name,self.gridSize,vis_walls,vis_food,vis_agents), f)
 
+            for p in range(2):
+                self.game_scores[p] = survivorCount[p]
+
+
+
+
     # Play visualisation of a saved game
     @staticmethod
     def load(loadGame,visResolution=(720,480), visSpeed='normal'):
+        import vis_pygame as vis
+
         if not os.path.isfile(loadGame):
             print("Error! Saved game file '%s' not found." % loadGame)
             sys.exit(-1)

@@ -31,7 +31,7 @@ class MyCreature:
         # extract different maps
         creature_map = percepts[:,:,0]  # 5x5 map with information about creatures and their size
         food_map = percepts[:,:,1]      # 5x5 map with information about strawberries
-        wall_map = percepts[:,:,2]      # 5x5 map with information about walls
+        wall_map = percepts[:,:,2]      # 5x5 map with information about wallss
 
         my_size = creature_map[2,2]
 

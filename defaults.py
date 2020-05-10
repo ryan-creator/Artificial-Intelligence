@@ -3,16 +3,16 @@
 game_params = {
 
    #File implementing the agent playing as player 1 (exclude .py extension)
-   "player1": "myAgent",
+   "player1": "hunterPlayer",
 
    # File implementing the agent playing as player 2 (exclude .py extension)
    "player2": "randomPlayer",
 
    # Game for which to show visualisations
-   "show_games": [1, 100, 200, 300, 400, 500],
+    "show_games": [1, 500],
 
    # Games for which to save visualisations (for later re-viewing)
-   "save_games": [],
+    "save_games": [1, 500],
 
    # Speed of visualisation ('slow','normal','fast')
    "visSpeed": 'normal',
