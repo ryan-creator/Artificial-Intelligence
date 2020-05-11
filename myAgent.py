@@ -13,6 +13,7 @@ tournament_winners = 5
 game_count = 0  # Keep track of the game count
 generation_fitness = np.zeros(defaults.game_params['nGames'])
 generation = np.zeros(defaults.game_params['nGames'])
+temp_array = np.zeros(5)
 create_chart = True
 
 
@@ -176,13 +177,20 @@ def newGeneration(old_population):
     # At the end you need to compute average fitness and return it along with your new population
     avg_fitness = np.mean(overall_fitness)
 
-    # Code between here and the return statement can go when i submit my code
-
     generation_fitness[game_count - 1] = avg_fitness
     generation[game_count - 1] = game_count
 
     # To calculate and display the average fitness chart.
     if game_count == defaults.game_params['nGames'] and create_chart:
+        temp = 0
+        count = 0
+        for i in range(len(generation)):
+            temp += generation_fitness[i]
+            if i % 5 == 0 and i != 0:
+                generation_fitness[count] = temp / 5
+                count += 1
+                temp = 0
+
         plt.plot(generation_fitness)
         plt.xlabel("Generation")
         plt.ylabel("Average Fitness")

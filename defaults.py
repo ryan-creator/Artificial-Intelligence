@@ -3,16 +3,16 @@
 game_params = {
 
    #File implementing the agent playing as player 1 (exclude .py extension)
-   "player1": "hunterPlayer",
+   "player1": "myAgent",
 
    # File implementing the agent playing as player 2 (exclude .py extension)
    "player2": "randomPlayer",
 
    # Game for which to show visualisations
-    "show_games": [1, 500],
+    "show_games": [500],
 
    # Games for which to save visualisations (for later re-viewing)
-    "save_games": [1, 500],
+    "save_games": [],
 
    # Speed of visualisation ('slow','normal','fast')
    "visSpeed": 'normal',
@@ -33,7 +33,7 @@ game_params = {
    "nWalls": 20,
 
    # Number of games to play allowing the agents to evolve
-   "nGames": 500
+   "nGames": 50
 }
 
 
