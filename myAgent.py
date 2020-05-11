@@ -8,12 +8,11 @@ import defaults
 playerName = "myAgent"
 nPercepts = 75  # This is the number of percepts
 nActions = 7  # This is the number of actions
-nChromosome = 8  # Length of a chromosome
-tournament_winners = 5
+nChromosome = 9  # Length of a chromosome
+tournament_winners = 3
 game_count = 0  # Keep track of the game count
 generation_fitness = np.zeros(defaults.game_params['nGames'])
-generation = np.zeros(defaults.game_params['nGames'])
-temp_array = np.zeros(5)
+temp_array = np.zeros(100)
 create_chart = True
 
 
@@ -32,94 +31,116 @@ class MyCreature:
         food_map = percepts[:, :, 1]  # 5x5 map with information about strawberries
         wall_map = percepts[:, :, 2]  # 5x5 map with information about walls
 
+        small_enemy = False
+        large_enemy = False
+        food = False
+        food_direction = 0
+        enemy_direction = 0
+
+        # The three personalities types, actions depend on the strength of each personality type
+        hunter = self.chromosome[0] + self.chromosome[1] + self.chromosome[2]
+        hungary = self.chromosome[3] + self.chromosome[4] + self.chromosome[5]
+        coward = self.chromosome[6] + self.chromosome[7] + self.chromosome[8]
+
         my_size = np.abs(creature_map[2, 2])  # My creatures size, used for comparison to other creatures
         actions = np.zeros(nActions)
 
-        # This wee if statement sets variables to particular values depending on the stage of the game,
-        # This is done so the creatures can have different goals at different stages i.e. eat at the b
-        # beginning to get bigger and then attack later in the game when bigger to win.
-        game_stage_early = 0
-        game_stage_late = 0
-        if game_count > 50:
-            game_stage_early = 50
-        else:
-            game_stage_late = 50
-
-        # I choose to give the creatures personalities variables so their behaviour further differs, their
-        # personality (aggressive or cautious) is determined by there 8th chromosome, an odd chromosome
-        # equals cautious and even equals aggressive.
-        personality_cautious = 0
-        personality_aggressive = 0
-        creature_character = self.chromosome[7]
-        if creature_character % 2 == 0:
-            personality_cautious = creature_character
-        else:
-            personality_aggressive = creature_character
-
-        # This block of code guides creatures into making a decision about whether to fight or run when an
-        # enemy creatures gets within the 5 by 5 map. If the creature is smaller than my creature then go
-        # towards it (chase) otherwise move away (run). To understand where creatures are on the map, I
-        # split the map into the sum(i, j) and either greater or less and 4, this split the map diagonally
-        # (from the bottom left to the top right), any number less than 4 was in the top left section and
-        # numbers bigger than 4 where in the bottom right section (finding the food also used the same mechanism).
+        # These for loops and if statements check for any food and enemy creatures in the 5 by 5 percepts
+        # if any are true then the corresponding variables are set to True, there are two different variables
+        # for enemy (large and small), if the creature is equal to my creatures size then are set under the large
+        # variable.
         for i in range(0, 5):
             for j in range(0, 5):
-                if creature_map[j, i] == 0:
-                    continue
-                if np.abs(creature_map[j, i]) > 0 and creature_map[j, i] != creature_map[2, 2]:
-                    if np.abs(creature_map[j, i]) < my_size:
-                        # Chase & fight
-                        if i + j >= 4:
-                            actions[2] += self.chromosome[2] + personality_aggressive + game_stage_late
-                            actions[3] += self.chromosome[3] + personality_aggressive + game_stage_late
-                        else:
-                            actions[0] += self.chromosome[0] + personality_aggressive + game_stage_late
-                            actions[1] += self.chromosome[1] + personality_aggressive + game_stage_late
-                    else:
-                        # Run away
-                        if i + j <= 4:
-                            actions[2] += self.chromosome[2] + personality_cautious + game_stage_early
-                            actions[3] += self.chromosome[3] + personality_cautious + game_stage_early
-                        else:
-                            actions[0] += self.chromosome[0] + personality_cautious + game_stage_early
-                            actions[1] += self.chromosome[1] + personality_cautious + game_stage_early
-
-        # This code used the same mechanisms explained for the fight run code, the creatures are guided to making a
-        # decision into the section that the food is in. If the creature is on top of food then i have multiplied the
-        # action score by 2 to increase the chances of the creature eating the food - but its not guaranteed e.g. if
-        # the chromosome is very small then multiplying it by 2 wouldn't increase its chances by much.
-        for i in range(0, 5):
-            for j in range(0, 5):
-                if food_map[j, i] == 0:
+                if food_map[j, i] == 0 and creature_map[j, i] == 0:
                     continue
                 if food_map[j, i] == 1:
-                    if food_map[2, 2] == 1:
-                        actions[5] += (self.chromosome[5] + personality_cautious + game_stage_early) * 2
-                    elif i + j <= 4:
-                        actions[0] += self.chromosome[0] + personality_cautious + game_stage_early
-                        actions[1] += self.chromosome[1] + personality_cautious + game_stage_early
+                    food = True
+                    food_direction = j + i
+                elif np.abs(creature_map[j, i]) > 0 and creature_map[j, i] != creature_map[2, 2]:
+                    if np.abs(creature_map[j, i]) < my_size:
+                        small_enemy = True
+                        enemy_direction = i + j
                     else:
-                        actions[2] += self.chromosome[2] + personality_cautious + game_stage_early
-                        actions[3] += self.chromosome[3] + personality_cautious + game_stage_early
+                        large_enemy = True
+                        enemy_direction = i + j
+
+        # These if blocks control the creatures directional actions (actions[0 - 4]) e.g., if there is a small
+        # creature and food then it depends on the creatures personality on what happens. If there are no
+        # large, small creatures or food then no actions are set.
+        if small_enemy and food:
+            if hungary > hunter and hungary > coward:
+                if food_map[2, 2] == 1:
+                    actions[5] += self.chromosome[3]
+                elif food_direction > 4:
+                    actions[2] += self.chromosome[4]
+                    actions[3] += self.chromosome[5]
+                else:
+                    actions[0] += self.chromosome[3]
+                    actions[1] += self.chromosome[4]
+            else:
+                if enemy_direction > 4:
+                    actions[2] += self.chromosome[0]
+                    actions[3] += self.chromosome[1]
+                else:
+                    actions[0] += self.chromosome[2]
+                    actions[1] += self.chromosome[0]
+        elif large_enemy and food:
+            if hungary > coward:
+                if food_map[2, 2] == 1:
+                    actions[5] += self.chromosome[3]
+                elif food_direction > 4:
+                    actions[2] += self.chromosome[4]
+                    actions[3] += self.chromosome[5]
+                else:
+                    actions[0] += self.chromosome[3]
+                    actions[1] += self.chromosome[4]
+            else:
+                if enemy_direction < 4:
+                    actions[2] += self.chromosome[0]
+                    actions[3] += self.chromosome[1]
+                else:
+                    actions[0] += self.chromosome[2]
+                    actions[1] += self.chromosome[0]
+        elif food:
+            if food_direction > 4:
+                actions[2] += self.chromosome[4]
+                actions[3] += self.chromosome[3]
+            else:
+                actions[0] += self.chromosome[3]
+                actions[1] += self.chromosome[5]
+        elif small_enemy and hunter > coward:
+            if enemy_direction > 4:
+                actions[2] += self.chromosome[2]
+                actions[3] += self.chromosome[1]
+            else:
+                actions[0] += self.chromosome[0]
+                actions[1] += self.chromosome[1]
+        elif large_enemy:
+            if enemy_direction < 4:
+                actions[2] += self.chromosome[6]
+                actions[3] += self.chromosome[7]
+            else:
+                actions[0] += self.chromosome[7]
+                actions[1] += self.chromosome[6]
 
         # This code is designed to prevent wasted moves (not trying to move onto a wall or a friendly creature) For
-        # example if there is a wall above the creature (wall_map[2, 1]) then append the corresponding chromosome
-        # the action score for moving down (away from the wall or friendly creature).
-        if np.abs(wall_map[2, 1]) == 1 or np.abs(creature_map[2, 1]) < 0:
+        # example if there is a wall above the creature (wall_map[2, 1]) and they have an action score to move
+        # up, then append the corresponding chromosome for the action score for moving down
+        # (away from the wall or friendly creature).
+        if np.abs(wall_map[2, 1]) == 1 or np.abs(creature_map[2, 1] and actions[0] != 0) < 0:
             actions[2] += self.chromosome[0]
-        if np.abs(wall_map[1, 2]) == 1 or np.abs(creature_map[1, 2]) < 0:
+        if np.abs(wall_map[1, 2]) == 1 or np.abs(creature_map[1, 2] and actions[1] != 0) < 0:
             actions[3] += self.chromosome[1]
-        if np.abs(wall_map[2, 3]) == 1 or np.abs(creature_map[2, 3]) < 0:
+        if np.abs(wall_map[2, 3]) == 1 or np.abs(creature_map[2, 3] and actions[2] != 0) < 0:
             actions[0] += self.chromosome[2]
-        if np.abs(wall_map[3, 2]) == 1 or np.abs(creature_map[3, 2]) < 0:
+        if np.abs(wall_map[3, 2]) == 1 or np.abs(creature_map[3, 2] and actions[3] != 0) < 0:
             actions[1] += self.chromosome[3]
 
-        # From watching replays I noticed that the creatures doing nothing looked extremely unhelpful so I wanted
-        # to decrease the chance of this action being the action that's run, hence i divide the action score by 3.
-        actions[4] = self.chromosome[4]
+        # Do nothing
+        actions[4] = self.chromosome[6]
 
         # Move in random direction
-        actions[6] = self.chromosome[6]
+        actions[6] = self.chromosome[7]
 
         return actions
 
@@ -127,7 +148,6 @@ class MyCreature:
 # Implements the fitness function, parent selection, elitism, the uniform cross-over method and mutations.
 def newGeneration(old_population):
     global game_count
-    game_count += 1
     length_old_population = len(old_population)
     overall_fitness = np.zeros(length_old_population)
 
@@ -148,9 +168,9 @@ def newGeneration(old_population):
     # The below code selects n number of the fittest creatures (n = tournament_winners) and picks two random creatures
     # from the tournament winners, the two picked creatures are used as parent_one and parent_two while the remaining
     # tournament winners were added to the new population (elitism).
-    sample = random.sample(range(tournament_winners), k=2)
-    pick_one = sample[0]
-    pick_two = sample[1]
+    selection = random.sample(range(tournament_winners), k=2)
+    pick_one = selection[0]
+    pick_two = selection[1]
 
     parent_one = old_population[pick_one]
     parent_two = old_population[pick_two]
@@ -176,29 +196,23 @@ def newGeneration(old_population):
 
     # At the end you need to compute average fitness and return it along with your new population
     avg_fitness = np.mean(overall_fitness)
-
-    generation_fitness[game_count - 1] = avg_fitness
-    generation[game_count - 1] = game_count
+    generation_fitness[game_count] = avg_fitness
+    game_count += 1
 
     # To calculate and display the average fitness chart.
     if game_count == defaults.game_params['nGames'] and create_chart:
         temp = 0
         count = 0
-        for i in range(len(generation)):
-            temp += generation_fitness[i]
+        for i in range(defaults.game_params['nGames'] + 1):
+            temp += generation_fitness[i - 1]
             if i % 5 == 0 and i != 0:
-                generation_fitness[count] = temp / 5
+                temp_array[count] = temp / 5
                 count += 1
                 temp = 0
-
-        plt.plot(generation_fitness)
+        plt.plot(temp_array)
         plt.xlabel("Generation")
         plt.ylabel("Average Fitness")
         plt.title("Change in average Fitness")
         plt.savefig("fitness_chart.png")
-        file = open("avg_fitness.txt", "a")
-        file.write(str(mean(generation_fitness)))
-        file.write("\n")
-        file.close()
 
     return new_population, avg_fitness

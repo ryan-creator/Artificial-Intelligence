@@ -9,7 +9,7 @@ game_params = {
    "player2": "randomPlayer",
 
    # Game for which to show visualisations
-    "show_games": [500],
+    "show_games": [1, 500],
 
    # Games for which to save visualisations (for later re-viewing)
     "save_games": [],
@@ -33,7 +33,7 @@ game_params = {
    "nWalls": 20,
 
    # Number of games to play allowing the agents to evolve
-   "nGames": 50
+   "nGames": 500
 }
 
 
