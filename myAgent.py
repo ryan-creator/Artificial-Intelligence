@@ -1,5 +1,3 @@
-from statistics import mean
-
 import matplotlib.pyplot as plt
 import numpy as np
 import random
@@ -9,11 +7,11 @@ playerName = "myAgent"
 nPercepts = 75  # This is the number of percepts
 nActions = 7  # This is the number of actions
 nChromosome = 9  # Length of a chromosome
-tournament_winners = 3
+tournament_winners = 5
 game_count = 0  # Keep track of the game count
 generation_fitness = np.zeros(defaults.game_params['nGames'])
 temp_array = np.zeros(100)
-create_chart = True
+create_chart = False
 
 
 class MyCreature:
@@ -60,6 +58,8 @@ class MyCreature:
                     if np.abs(creature_map[j, i]) < my_size:
                         small_enemy = True
                         enemy_direction = i + j
+                    elif np.abs(creature_map[j, i]) == my_size:
+                        continue
                     else:
                         large_enemy = True
                         enemy_direction = i + j
@@ -68,7 +68,7 @@ class MyCreature:
         # creature and food then it depends on the creatures personality on what happens. If there are no
         # large, small creatures or food then no actions are set.
         if small_enemy and food:
-            if hungary > hunter and hungary > coward:
+            if hungary >= hunter and hungary > coward:
                 if food_map[2, 2] == 1:
                     actions[5] += self.chromosome[3]
                 elif food_direction > 4:
@@ -85,7 +85,7 @@ class MyCreature:
                     actions[0] += self.chromosome[2]
                     actions[1] += self.chromosome[0]
         elif large_enemy and food:
-            if hungary > coward:
+            if hungary >= coward:
                 if food_map[2, 2] == 1:
                     actions[5] += self.chromosome[3]
                 elif food_direction > 4:
@@ -101,40 +101,43 @@ class MyCreature:
                 else:
                     actions[0] += self.chromosome[2]
                     actions[1] += self.chromosome[0]
-        elif food:
-            if food_direction > 4:
-                actions[2] += self.chromosome[4]
-                actions[3] += self.chromosome[3]
-            else:
-                actions[0] += self.chromosome[3]
-                actions[1] += self.chromosome[5]
-        elif small_enemy and hunter > coward:
-            if enemy_direction > 4:
-                actions[2] += self.chromosome[2]
-                actions[3] += self.chromosome[1]
-            else:
-                actions[0] += self.chromosome[0]
-                actions[1] += self.chromosome[1]
-        elif large_enemy:
-            if enemy_direction < 4:
-                actions[2] += self.chromosome[6]
-                actions[3] += self.chromosome[7]
-            else:
-                actions[0] += self.chromosome[7]
-                actions[1] += self.chromosome[6]
+        else:
+            if food:
+                if food_map[2, 2] == 1:
+                    actions[5] += self.chromosome[3]
+                elif food_direction > 4:
+                    actions[2] += self.chromosome[4]
+                    actions[3] += self.chromosome[3]
+                else:
+                    actions[0] += self.chromosome[3]
+                    actions[1] += self.chromosome[5]
+            elif small_enemy:
+                if enemy_direction > 4:
+                    actions[2] += self.chromosome[2]
+                    actions[3] += self.chromosome[1]
+                else:
+                    actions[0] += self.chromosome[0]
+                    actions[1] += self.chromosome[1]
+            elif large_enemy:
+                if enemy_direction < 4:
+                    actions[2] += self.chromosome[6]
+                    actions[3] += self.chromosome[7]
+                else:
+                    actions[0] += self.chromosome[7]
+                    actions[1] += self.chromosome[6]
 
         # This code is designed to prevent wasted moves (not trying to move onto a wall or a friendly creature) For
         # example if there is a wall above the creature (wall_map[2, 1]) and they have an action score to move
         # up, then append the corresponding chromosome for the action score for moving down
         # (away from the wall or friendly creature).
         if np.abs(wall_map[2, 1]) == 1 or np.abs(creature_map[2, 1] and actions[0] != 0) < 0:
-            actions[2] += self.chromosome[0]
+            actions[0] = 0
         if np.abs(wall_map[1, 2]) == 1 or np.abs(creature_map[1, 2] and actions[1] != 0) < 0:
-            actions[3] += self.chromosome[1]
+            actions[1] = 0
         if np.abs(wall_map[2, 3]) == 1 or np.abs(creature_map[2, 3] and actions[2] != 0) < 0:
-            actions[0] += self.chromosome[2]
+            actions[2] = 0
         if np.abs(wall_map[3, 2]) == 1 or np.abs(creature_map[3, 2] and actions[3] != 0) < 0:
-            actions[1] += self.chromosome[3]
+            actions[3] = 0
 
         # Do nothing
         actions[4] = self.chromosome[6]

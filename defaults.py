@@ -9,7 +9,7 @@ game_params = {
    "player2": "randomPlayer",
 
    # Game for which to show visualisations
-    "show_games": [1, 500],
+    "show_games": [1, 50, 100, 200, 300, 400, 450, 500],
 
    # Games for which to save visualisations (for later re-viewing)
     "save_games": [],
