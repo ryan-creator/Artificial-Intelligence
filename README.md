@@ -10,3 +10,5 @@ that lead to more of your creatures (regardless of size) surviving at the end of
 The trick is that each creature acts as an independent agent and these behaviours must
 be learned through the process of simulated fitness selection and evolution – i.e. a genetic
 algorithm.
+
+Link to assignment description: assig2.pdf
