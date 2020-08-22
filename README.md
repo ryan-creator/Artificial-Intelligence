@@ -1,3 +1,5 @@
+<h1> Evolve a species in a game </h1>
+
 For this assignment, I had to implement a genetic algorithm to optimise the fitness of a
 species of creatures in a 2D grid-based game. The game pits two populations of creatures
 (red and blue) against each other – one population controlled by an agent you are task
