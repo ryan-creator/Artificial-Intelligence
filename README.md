@@ -11,4 +11,4 @@ The trick is that each creature acts as an independent agent and these behaviour
 be learned through the process of simulated fitness selection and evolution – i.e. a genetic
 algorithm.
 
-Link to assignment description: [a relative link]assig2.pdf
+[Link to assignment description](assig2.pdf)
